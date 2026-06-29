@@ -19,7 +19,8 @@
 | Background | **threading.Thread daemon** (no APScheduler). |
 | Pérdida de paquetes | **subprocess ping**. |
 | Backend | **Flask + SQLAlchemy (SQLite)**. |
-| Frontend | **Astro 4 + TypeScript (SSR)** + Tailwind + Chart.js + vis-network. |
+| Visualización | **Plotly** (gráficas de métricas y grafo de topología) + **networkx** (modelo/algoritmos del grafo). |
+| Frontend | **Astro 4 + TypeScript (SSR)** + Tailwind + **Plotly.js** (render de figuras Plotly). |
 | Idioma UI | **Español**. |
 | Arranque | Se entrega `PLAN.md` ANTES de escribir código de la app. |
 
@@ -90,13 +91,17 @@ ASR_Extra/
 │   │   ├── enrutamiento.py      # /enrutamiento/...
 │   │   ├── cambios.py           # /cambios/...
 │   │   └── alertas.py           # /alertas/...
-│   ├── network_utils/
+│   ├── network_utils/           # capa de infraestructura (acceso a la red)
 │   │   ├── PySnmpV3.py          # helper SNMPv3 (UsmUserData, get/walk sync+async)
 │   │   ├── PySnmpInfo.py        # MIB System (hardware/SO/contacto/uptime/location)
 │   │   ├── PySnmpOctetos.py     # monitoreo 6 contadores por interfaz (hilos)
 │   │   ├── PySnmpTraps.py       # receptor de traps SNMPv3 -> Alertas
+│   │   ├── ssh_netmiko.py       # conexión SSH/CDP (Netmiko) para descubrimiento
 │   │   ├── ansible_service.py   # inventario dinámico + ansible_runner
 │   │   └── ping_monitor.py      # pérdida de paquetes R1->R2
+│   ├── viz/                     # capa de visualización (Plotly + networkx)
+│   │   ├── grafo_topologia.py  # construye grafo networkx -> figura Plotly (JSON)
+│   │   └── graficas_metricas.py# series de tiempo Plotly (bits/s, unicast, no-unicast)
 │   └── ansible/playbooks/
 │       ├── configure_rip.yml
 │       ├── configure_ospf.yml
@@ -112,13 +117,13 @@ ASR_Extra/
         ├── lib/api.ts           # wrapper fetch tipado
         └── pages/
             ├── index.astro       # 5 tarjetas
-            ├── topologia.astro   # grafo vis-network + descubrir
+            ├── topologia.astro   # figura Plotly (grafo) + botón descubrir
             ├── enrutamiento.astro# botones RIP/OSPF
             ├── alertas.astro     # tabla filtrable, auto-refresh 15s
             ├── cambios.astro     # formularios hostname/location/interfaz
             └── routers/
                 ├── index.astro   # grid de routers
-                └── [hostname].astro  # detalle + Chart.js (polling 20s)
+                └── [hostname].astro  # detalle + Plotly.js (polling 20s)
 ```
 
 ---
@@ -215,13 +220,25 @@ Conversión `f0_0` ↔ `FastEthernet0/0` con `_api_a_ios()` en `cambios.py`.
 
 ---
 
-## 9. Frontend (Astro + TS)
+## 9. Frontend (Astro + TS) y visualización (Plotly + networkx)
 
-- `astro.config.mjs`: `output:'server'`, integraciones react + tailwind.
-- `src/lib/api.ts`: `apiFetch<T>()` + objeto `api`; base URL desde `import.meta.env.PUBLIC_API_URL`.
-- Chart.js (CDN) gráficas bits/s y paquetes/s, polling 20 s.
-- vis-network (CDN) grafo de topología.
-- Páginas: index (5 tarjetas), topologia, enrutamiento, routers (+detalle), alertas (auto-refresh 15 s), cambios.
+**Estrategia de visualización:** las figuras se construyen en el **backend** con
+**Plotly** (a partir de datos de la BD) y se exponen como **JSON de figura Plotly**;
+el frontend solo las renderiza con **Plotly.js** (`Plotly.react`). Esto mantiene la
+lógica de graficado en Python (modular y testeable) y deja al frontend "tonto".
+
+- **`viz/grafo_topologia.py`**: construye un grafo **networkx** (nodos = routers,
+  aristas = enlaces descubiertos por CDP), calcula el layout (`spring_layout`) y
+  detecta componentes/conectividad; exporta una **figura Plotly** (scatter de nodos
+  + líneas de aristas) servida por `GET /topologia/`.
+- **`viz/graficas_metricas.py`**: a partir de `MetricaInterfaz`, arma **3 figuras
+  Plotly** de series de tiempo (eje X = tiempo): tráfico bits/s, unicast pkt/s,
+  no-unicast pkt/s — cada una con trazas in/out y anotación de máx y promedio.
+- Frontend:
+  - `astro.config.mjs`: `output:'server'`, integraciones react + tailwind.
+  - `src/lib/api.ts`: `apiFetch<T>()` + objeto `api`; base URL desde `import.meta.env.PUBLIC_API_URL`.
+  - `Plotly.js` (CDN) renderiza las figuras de métricas (polling 20 s) y el grafo de topología.
+  - Páginas: index (5 tarjetas), topologia, enrutamiento, routers (+detalle), alertas (auto-refresh 15 s), cambios.
 
 ---
 
@@ -251,7 +268,33 @@ PACKET_LOSS_INTERVAL=30
 PACKET_LOSS_COUNT=10
 ```
 
-`requirements.txt`: Flask, Flask-Cors, Flask-SQLAlchemy, python-dotenv, netmiko, pysnmp==7.1.26, ansible-runner, ansible, networkx (+ plotly/pandas/matplotlib si se usan en gráficas server-side).
+### `requirements.txt` (backend)
+
+| Librería | Uso |
+|----------|-----|
+| `Flask`, `Flask-Cors` | Servidor REST + CORS para el frontend. |
+| `Flask-SQLAlchemy` | ORM sobre SQLite (modelos). |
+| `python-dotenv` | Carga de `.env`. |
+| `netmiko` | SSH + CDP para descubrimiento de topología. |
+| `pysnmp==7.1.26` | SNMPv3 (GETs, walks y receptor de traps), async. |
+| `ansible`, `ansible-runner` | Configuración de routers vía playbooks `cisco.ios`. |
+| **`networkx`** | **Modelo y algoritmos del grafo de topología** (nodos/aristas, layout, conectividad). |
+| **`plotly`** | **Construcción server-side de figuras**: grafo de topología y series de tiempo de métricas. |
+| `pandas` | Manejo tabular de muestras de métricas (alimenta a Plotly, cálculo de máx/promedio). |
+
+> **Plotly** y **networkx** son piezas centrales (no opcionales): networkx modela el
+> grafo descubierto y Plotly genera todas las visualizaciones. El frontend solo
+> renderiza con Plotly.js. Se descartan Chart.js y vis-network.
+
+### Frontend (`package.json`)
+
+| Librería | Uso |
+|----------|-----|
+| `astro` | Framework SSR. |
+| `@astrojs/react`, `react`, `react-dom` | Componentes interactivos. |
+| `@astrojs/tailwind`, `tailwindcss` | Estilos. |
+| `plotly.js-dist-min` (o CDN) | Render en navegador de las figuras Plotly del backend. |
+| `typescript` | Tipado de `lib/api.ts` y componentes. |
 
 ---
 
@@ -313,7 +356,7 @@ Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
 ### Fase 4 — Frontend Astro
 - [ ] Scaffold Astro + Tailwind + `astro.config.mjs` + `tailwind.config.mjs` + `.env`.
 - [ ] `src/lib/api.ts`.
-- [ ] Páginas: index, topologia (vis-network), enrutamiento, routers (index + [hostname] con Chart.js), alertas, cambios.
+- [ ] Páginas: index, topologia (Plotly grafo), enrutamiento, routers (index + [hostname] con Plotly.js), alertas, cambios.
 
 ### Fase 5 — Integración y arranque
 - [ ] `start.sh` (instala colección, .env, Flask + Astro).
@@ -344,3 +387,59 @@ Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
 6. **Migración SNMP v2c→v3** respecto a la referencia es trabajo real.
 7. **IPs de topología provisionales** hasta definir la red final.
 8. **MCP GitHub sin escritura**: se usa git directo (con token configurado) para push.
+
+---
+
+## 16. Arquitectura modular (separación de responsabilidades)
+
+El backend se organiza en **capas** para que cada pieza sea independiente, testeable y
+reemplazable sin tocar el resto:
+
+```
+ Frontend (Astro)  ──HTTP──▶  routes/ (controladores REST, "delgados")
+                                   │  validan entrada, devuelven JSON
+                                   ▼
+                              services / network_utils / viz   (lógica)
+                                   │  SNMP, SSH, Ansible, ping, grafos, gráficas
+                                   ▼
+                              database/ (models + sesión SQLAlchemy)
+```
+
+Principios:
+- **`routes/` no contiene lógica de red**: solo orquesta llamadas a `network_utils/` y
+  `viz/` y serializa la respuesta. Cada opción del examen = un blueprint propio.
+- **`network_utils/` es infraestructura pura** (SNMP/SSH/Ansible/ping), sin saber de Flask
+  más allá de recibir el `app` para el contexto de BD cuando un hilo necesita escribir.
+- **`viz/` aísla Plotly + networkx**: recibe datos de la BD y devuelve figuras JSON; se
+  puede probar sin levantar el servidor.
+- **`PySnmpV3.py` centraliza credenciales y wrappers**: ningún otro módulo instancia
+  `UsmUserData`; si cambia el modo SNMP, se cambia en un solo lugar.
+- **Configuración por `.env`**: nada de credenciales/IPs hardcodeadas en el código.
+- **Frontend desacoplado**: habla con el backend solo por `lib/api.ts`; cambiar la URL del
+  API o un endpoint se hace en un único archivo.
+
+## 17. Prácticas de Git (branches y commits)
+
+**Ramas**
+- `main`: estable, **nunca** se hace push directo.
+- `claude/asr-extra-network-monitoring-tyc038`: **rama de integración** de este trabajo
+  (la designada). Todos los pushes remotos van aquí.
+- Para cada fase se usa una **rama local de feature** que luego se integra a la rama de
+  integración, manteniendo el historial limpio:
+  `feat/cimientos`, `feat/snmpv3`, `feat/routers-info`, `feat/metricas`,
+  `feat/alertas-traps`, `feat/topologia`, `feat/ansible-config`, `feat/ping-monitor`,
+  `feat/viz-plotly`, `feat/frontend`.
+  > Nota: por política de la sesión solo se **pushea la rama de integración**; las ramas
+  > de feature son locales salvo que se autorice publicarlas.
+
+**Commits — [Conventional Commits](https://www.conventionalcommits.org/)**
+- Formato: `tipo(scope): descripción breve en imperativo`.
+- Tipos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`.
+- Ejemplos:
+  - `feat(models): agrega Router, Interface, MetricaInterfaz y Alerta`
+  - `feat(snmp): implementa helper SNMPv3 con UsmUserData (SHA+AES128)`
+  - `feat(viz): grafo de topología con networkx y figura Plotly`
+  - `fix(metricas): maneja wrap-around de Counter32 en ifInOctets`
+- **Un cambio lógico por commit** (atómico), mensaje que explique el *porqué* cuando no
+  sea obvio. Nada de commits gigantes "WIP".
+- Cada fase del §13 termina con sus commits y un push a la rama de integración.
