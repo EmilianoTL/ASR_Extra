@@ -1,0 +1,346 @@
+# PLAN — Sistema de Monitoreo de Red RESTful (ASR Examen Extraordinario)
+
+> Documento técnico de planeación para `EmilianoTL/ASR_Extra`.
+> Referencia (solo lectura): `EmilianoTL/ASR_FinalProject`.
+> Rama de trabajo: `claude/asr-extra-network-monitoring-tyc038`.
+> Última actualización: 2026-06-29.
+
+---
+
+## 0. Decisiones cerradas
+
+| Tema | Decisión |
+|------|----------|
+| SNMP | **SNMPv3** (SHA auth + AES128 priv). NO v2c. |
+| Credenciales SSH/SNMP | **Desde `.env`** (no formulario en la web). |
+| Config de routers | **Ansible** (`cisco.ios`) para toda configuración. |
+| Descubrimiento | **Netmiko + CDP (BFS)**. |
+| SNMP lib | **pysnmp 7.1 async**. |
+| Background | **threading.Thread daemon** (no APScheduler). |
+| Pérdida de paquetes | **subprocess ping**. |
+| Backend | **Flask + SQLAlchemy (SQLite)**. |
+| Frontend | **Astro 4 + TypeScript (SSR)** + Tailwind + Chart.js + vis-network. |
+| Idioma UI | **Español**. |
+| Arranque | Se entrega `PLAN.md` ANTES de escribir código de la app. |
+
+---
+
+## 1. Qué pide el examen (fuente: PDF)
+
+Página web RESTful para monitorear/administrar una red Cisco en GNS3. La página inicial ofrece 5 opciones:
+
+1. **Configurar enrutamiento** — sin protocolo previo, activar a elección **RIP u OSPF en TODA la red**.
+2. **Explorar la red** — sin información previa, usando solo credenciales SSH+SNMP comunes, descubrir la topología, guardarla en BD y mostrarla **gráficamente**.
+3. **Enrutadores** — vía SNMPv3: **hardware, SO, contacto, tiempo de actividad**, y guardarlos en BD.
+   - **Interfaces**: estado (up/down), IP, máscara, vecino conectado; y **gráficas cada 20 s** (X=tiempo) de:
+     - Tráfico **bits/s** (máx y promedio, in/out).
+     - **Unicast** paquetes/s (máx y promedio, in/out).
+     - **No-unicast** paquetes/s (máx y promedio, in/out).
+4. **Relación de alertas** — actuales e históricas, con timestamp y tipo:
+     - Interfaz up/down.
+     - Acceso por consola a cualquier router.
+     - Pérdida de paquetes R1↔R2 > 25%.
+5. **Cambio de datos** — hostname, locación, activar/desactivar interfaces.
+
+---
+
+## 2. Cómo se califica (RÚBRICA — 10 puntos)
+
+Proceso de revisión (secuencial; si un paso falla, se detiene y se califica hasta ahí):
+1. Verifican que NO haya protocolo de enrutamiento preconfigurado.
+2. **Piden alterar la topología** (borran un dispositivo o interfaz) → el descubrimiento debe ser dinámico.
+3. Activan configurar enrutamiento.
+4. Activan explorar la red.
+5. Revisan info de routers e interfaces.
+6. Piden un cambio de dato.
+7. Fuerzan alertas y verifican que aparezcan.
+
+| # | Condición | Peso aprox. |
+|---|-----------|-------------|
+| 1 | Página de inicio con todas las opciones | 0.5 |
+| 2 | La configuración de enrutamiento se activa en los routers | 1 |
+| 3 | Se detecta la topología | 1 |
+| 4 | Se despliega la info de los dispositivos | 1 |
+| 5 | Info general de las interfaces | 1 |
+| 6 | **Gráficas actualizando en los tiempos indicados** | **2** |
+| 7 | **Alerta disparada aparece correctamente** | **2** |
+| 8 | Cambio de datos corroborable | 0.5 |
+| | **TOTAL** | **10** |
+
+> Los pesos exactos provienen de una tabla del PDF que se extrajo parcialmente desordenada; **confirmar con el profesor**. Lo seguro: **gráficas en tiempo real + alertas ≈ 40% de la nota** → máxima prioridad.
+
+---
+
+## 3. Arquitectura de archivos objetivo
+
+```
+ASR_Extra/
+├── PLAN.md                      # este documento
+├── start.sh                     # arranque: colección ansible, .env, Flask + Astro
+├── SME/                         # Backend Flask
+│   ├── app.py                   # app, blueprints, arranca hilos (traps + ping)
+│   ├── requirements.txt
+│   ├── .env.example
+│   ├── database/
+│   │   ├── models.py            # Router, Interface, MetricaInterfaz, Alerta
+│   │   └── seed.py              # R1/R2/R3 inicial (solo arranque/pruebas)
+│   ├── routes/
+│   │   ├── routers.py           # /routers/...
+│   │   ├── topologia.py         # /topologia/...
+│   │   ├── enrutamiento.py      # /enrutamiento/...
+│   │   ├── cambios.py           # /cambios/...
+│   │   └── alertas.py           # /alertas/...
+│   ├── network_utils/
+│   │   ├── PySnmpV3.py          # helper SNMPv3 (UsmUserData, get/walk sync+async)
+│   │   ├── PySnmpInfo.py        # MIB System (hardware/SO/contacto/uptime/location)
+│   │   ├── PySnmpOctetos.py     # monitoreo 6 contadores por interfaz (hilos)
+│   │   ├── PySnmpTraps.py       # receptor de traps SNMPv3 -> Alertas
+│   │   ├── ansible_service.py   # inventario dinámico + ansible_runner
+│   │   └── ping_monitor.py      # pérdida de paquetes R1->R2
+│   └── ansible/playbooks/
+│       ├── configure_rip.yml
+│       ├── configure_ospf.yml
+│       ├── change_hostname.yml
+│       ├── change_location.yml
+│       └── toggle_interface.yml
+└── Frontend/                    # Astro + TypeScript
+    ├── package.json
+    ├── astro.config.mjs         # output: 'server', react + tailwind
+    ├── tailwind.config.mjs
+    ├── .env                     # PUBLIC_API_URL
+    └── src/
+        ├── lib/api.ts           # wrapper fetch tipado
+        └── pages/
+            ├── index.astro       # 5 tarjetas
+            ├── topologia.astro   # grafo vis-network + descubrir
+            ├── enrutamiento.astro# botones RIP/OSPF
+            ├── alertas.astro     # tabla filtrable, auto-refresh 15s
+            ├── cambios.astro     # formularios hostname/location/interfaz
+            └── routers/
+                ├── index.astro   # grid de routers
+                └── [hostname].astro  # detalle + Chart.js (polling 20s)
+```
+
+---
+
+## 4. Modelo de datos (SQLAlchemy)
+
+```python
+class Router:        id, hostname(uniq), ip_admin(uniq), location, hardware,
+                     sistema_operativo, contacto, uptime, last_seen, interfaces[]
+class Interface:     id, nombre_api('f0_0'), ip_address, mascara, estado('up'/'down'),
+                     router_id(FK), conectado_a_router_id(FK nullable)
+class MetricaInterfaz: id, router_hostname, interfaz_api, timestamp,
+                     bits_in, bits_out, unicast_in, unicast_out,
+                     non_unicast_in, non_unicast_out
+class Alerta:        id, timestamp, tipo(IFACE_UP|IFACE_DOWN|CONSOLE_ACCESS|PACKET_LOSS),
+                     router_hostname, interfaz_api(nullable), descripcion
+```
+
+Diferencias vs referencia: se elimina `Usuario`/`router_usuarios`; `MetricaOctetos` (1 contador) se reemplaza por `MetricaInterfaz` (6 contadores); `EventoTrap` se generaliza a `Alerta`.
+
+---
+
+## 5. Endpoints REST
+
+### `/routers/`
+| Método | Ruta | Acción |
+|---|---|---|
+| GET | `/routers/` | Lista routers |
+| GET | `/routers/<hostname>/` | Info (refresca SNMP en cada GET) |
+| GET | `/routers/<hostname>/interfaces` | Interfaces |
+| GET | `/routers/<hostname>/interfaces/<iface>/metricas/<tiempo>` | Stats (máx, promedio) + muestras |
+| POST | `…/metricas/<tiempo>` | Inicia hilo de monitoreo |
+| DELETE | `…/metricas/<tiempo>` | Detiene monitoreo |
+
+### `/topologia/`
+| GET | `/topologia/` | routers + vecinos + enlaces |
+| POST | `/topologia/` | Lanza descubrimiento BFS por CDP |
+
+### `/enrutamiento/`
+| GET | `/enrutamiento/` | Protocolo activo actual |
+| POST | `/enrutamiento/` | `{"protocolo":"rip"|"ospf"}` → Ansible en todos |
+
+### `/cambios/`
+| PUT | `/cambios/<hostname>/hostname` | `{"hostname":"nuevo"}` |
+| PUT | `/cambios/<hostname>/location` | `{"location":"nueva"}` |
+| PUT | `/cambios/<hostname>/interfaces/<iface>` | `{"accion":"up"|"down"}` |
+
+### `/alertas/`
+| GET | `/alertas/` | Historial (`?tipo=&router=&limit=`) |
+
+---
+
+## 6. SNMPv3 — detalle
+
+Credenciales desde `.env`: `SNMP_USER`, `SNMP_AUTH_PASS` (SHA), `SNMP_PRIV_PASS` (AES128).
+
+```python
+UsmUserData(SNMP_USER, authKey=SNMP_AUTH_PASS, privKey=SNMP_PRIV_PASS,
+            authProtocol=usmHMACSHAAuthProtocol, privProtocol=usmAesCfb128Protocol)
+```
+
+`PySnmpV3.py` expone `snmp_get/snmp_walk` (sync) y `snmp_get_async/snmp_walk_async`.
+
+OIDs:
+- **System**: sysDescr `1.3.6.1.2.1.1.1.0`, sysContact `.1.4.0`, sysName `.1.5.0`, sysLocation `.1.6.0`, sysUpTime `.1.3.0`.
+- **ifTable**: ifDescr `…2.2.1.2`, ifInOctets `.10`, ifOutOctets `.16`, ifInUcastPkts `.11`, ifOutUcastPkts `.17`, ifInNUcastPkts `.12`, ifOutNUcastPkts `.18`. Manejo de wrap-around Counter32.
+- **Traps**: LinkDown `1.3.6.1.6.3.1.1.5.3`, LinkUp `.5.4`, TTY login `1.3.6.1.4.1.9.9.41.2.0.1`.
+
+Receptor (`PySnmpTraps.py`): `config.addV3User()` + `ntfrcv.NotificationReceiver` en hilo daemon. LinkUp→IFACE_UP, LinkDown→IFACE_DOWN, TTY→CONSOLE_ACCESS → guarda `Alerta`. Singleton `asegurar_receptor_corriendo(app)`.
+
+---
+
+## 7. Ansible — detalle
+
+`ansible_service.py`: genera inventario INI **temporal desde la BD** (IPs en runtime), ejecuta, borra. `ejecutar_playbook(playbook, extra_vars, routers)` → `ansible_runner.run()` → `{ok, mensaje, rc, stats}`. Requiere colección `cisco.ios` (instalada por `start.sh`).
+
+Playbooks (`cisco.ios.ios_config`, `save_when: always`):
+- `configure_rip.yml`: `router rip / version 2 / network 0.0.0.0 / no auto-summary`.
+- `configure_ospf.yml`: `router ospf 1 / network 0.0.0.0 255.255.255.255 area 0`.
+- `change_hostname.yml`: var `nuevo_hostname`.
+- `change_location.yml`: var `nueva_location` → `snmp-server location`.
+- `toggle_interface.yml`: vars `nombre_interfaz`, `accion` → `no shutdown`/`shutdown`.
+
+Conversión `f0_0` ↔ `FastEthernet0/0` con `_api_a_ios()` en `cambios.py`.
+
+---
+
+## 8. Monitoreo en background (threading)
+
+- **Métricas** (`PySnmpOctetos.py`): un hilo daemon por interfaz (`threading.Event`), lee 6 contadores cada `<tiempo>`s, calcula deltas (bits/s = Δoctetos×8/Δt; pkts/s = Δpkts/Δt). API: `iniciar_monitoreo_hilo()`, `detener_monitoreo_interfaz()`, `monitoreo_activo()`.
+- **Ping** (`ping_monitor.py`): hilo daemon, cada `PACKET_LOSS_INTERVAL`s hace `subprocess ping` R1→ip_admin(R2) con `PACKET_LOSS_COUNT` paquetes; si pérdida > `PACKET_LOSS_THRESHOLD`% → `Alerta(PACKET_LOSS)`.
+- **Traps**: receptor daemon (§6).
+- En `app.py` al arrancar: `asegurar_receptor_corriendo(app)` + `iniciar_monitor(app)`.
+
+---
+
+## 9. Frontend (Astro + TS)
+
+- `astro.config.mjs`: `output:'server'`, integraciones react + tailwind.
+- `src/lib/api.ts`: `apiFetch<T>()` + objeto `api`; base URL desde `import.meta.env.PUBLIC_API_URL`.
+- Chart.js (CDN) gráficas bits/s y paquetes/s, polling 20 s.
+- vis-network (CDN) grafo de topología.
+- Páginas: index (5 tarjetas), topologia, enrutamiento, routers (+detalle), alertas (auto-refresh 15 s), cambios.
+
+---
+
+## 10. Variables de entorno (`.env.example`)
+
+```bash
+FLASK_APP=app.py
+FLASK_DEBUG=True
+FLASK_PUERTO=5000
+DB_NAME=red_asr.db
+# SSH / Ansible
+ROUTER_USER=admin
+ROUTER_PASS=cisco123
+ROUTER_ENABLE=enable123
+# SNMPv3
+SNMP_USER=snmp_user
+SNMP_AUTH_PASS=authpass123
+SNMP_PRIV_PASS=privpass123
+SNMP_PORT=161
+TRAP_PORT=162
+# Descubrimiento
+RED_ADMIN=148.204.56
+SEED_ROUTER_IP=148.204.56.1
+# Pérdida de paquetes R1-R2
+PACKET_LOSS_THRESHOLD=25
+PACKET_LOSS_INTERVAL=30
+PACKET_LOSS_COUNT=10
+```
+
+`requirements.txt`: Flask, Flask-Cors, Flask-SQLAlchemy, python-dotenv, netmiko, pysnmp==7.1.26, ansible-runner, ansible, networkx (+ plotly/pandas/matplotlib si se usan en gráficas server-side).
+
+---
+
+## 11. Topología GNS3 (seed inicial — solo arranque)
+
+| Router | ip_admin | Interfaces (api / ip) |
+|--------|----------|------------------------|
+| R1 | 148.204.56.1 | f0_0 → 8.8.8.1, f0_1 → 148.204.56.1 |
+| R2 | 8.8.8.5 | f0_0 → 8.8.8.5, f0_1 → 148.204.59.1 |
+| R3 | 8.8.8.9 | f0_0 → 8.8.8.9, f0_1 → 148.204.60.1 |
+
+> IPs reales (subneteo de 8.8.8.0/24) se ajustan cuando se defina la topología final. El seed NO es la verdad: la topología real se descubre por CDP.
+
+## 12. Config necesaria en cada router Cisco c7200
+
+```
+snmp-server group GRUPO_V3 v3 priv
+snmp-server user snmp_user GRUPO_V3 v3 auth sha authpass123 priv aes 128 privpass123
+snmp-server enable traps
+snmp-server host <IP_MV_ALPINE> version 3 priv snmp_user
+snmp-server location <ubicacion>
+snmp-server contact <contacto>
+cdp run
+hostname R1
+ip domain-name lab.local
+crypto key generate rsa modulus 1024
+username admin privilege 15 secret cisco123
+enable secret enable123
+line vty 0 4
+ transport input ssh
+ login local
+! NOTA: SIN router rip / router ospf (la app los activa)
+```
+
+---
+
+## 13. Plan de ejecución por fases
+
+Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
+
+### Fase 1 — Cimientos
+- [ ] `SME/database/models.py` (4 modelos).
+- [ ] `SME/database/seed.py` (R1/R2/R3).
+- [ ] `SME/app.py` (Flask, CORS, db.create_all, registro de blueprints, arranque de hilos).
+- [ ] `SME/requirements.txt`, `SME/.env.example`, `.gitignore`.
+
+### Fase 2 — Capa SNMPv3
+- [ ] `SME/network_utils/PySnmpV3.py` (UsmUserData; get/walk sync+async).
+- [ ] Prueba unitaria/manual del helper.
+
+### Fase 3 — Features backend
+- [ ] `PySnmpInfo.py` + `routes/routers.py` (info dispositivos, refresco SNMP).
+- [ ] `PySnmpOctetos.py` + endpoints de métricas (6 contadores, hilos).
+- [ ] `PySnmpTraps.py` + `routes/alertas.py` (IFACE_UP/DOWN, CONSOLE_ACCESS).
+- [ ] `routes/topologia.py` (BFS CDP, adaptado de referencia; usar `secret=ROUTER_ENABLE`).
+- [ ] `ansible_service.py` + 5 playbooks + `routes/enrutamiento.py` + `routes/cambios.py`.
+- [ ] `ping_monitor.py` (PACKET_LOSS).
+
+### Fase 4 — Frontend Astro
+- [ ] Scaffold Astro + Tailwind + `astro.config.mjs` + `tailwind.config.mjs` + `.env`.
+- [ ] `src/lib/api.ts`.
+- [ ] Páginas: index, topologia (vis-network), enrutamiento, routers (index + [hostname] con Chart.js), alertas, cambios.
+
+### Fase 5 — Integración y arranque
+- [ ] `start.sh` (instala colección, .env, Flask + Astro).
+- [ ] Checklist de demo (§14).
+
+---
+
+## 14. Checklist de demo (mapeado a la rúbrica)
+
+- [ ] (0.5) Página inicio muestra las 5 opciones.
+- [ ] (1) Configurar enrutamiento RIP/OSPF se aplica en todos los routers.
+- [ ] (1) Explorar la red detecta y dibuja la topología (incluso alterada).
+- [ ] (1) Info de dispositivos (hardware/SO/contacto/uptime) correcta.
+- [ ] (1) Info de interfaces (estado/IP/máscara/vecino) correcta.
+- [ ] (2) Gráficas de tráfico/unicast/no-unicast actualizando cada 20 s.
+- [ ] (2) Alertas (iface up/down, consola, pérdida >25%) aparecen al dispararse.
+- [ ] (0.5) Cambio de hostname/location/interfaz corroborable.
+
+---
+
+## 15. Riesgos y notas
+
+1. **PDF contradice SNMP v2c vs v3.** Decisión: **SNMPv3**. Confirmar con el profesor; el helper se diseña aislado por si hubiera que añadir v2c.
+2. **El examen altera la topología** → el descubrimiento por CDP debe ser robusto y dinámico; el seed es solo arranque.
+3. **Sin enrutamiento previo** en los configs de GNS3 (lo activa la app).
+4. **Gráficas + alertas = ~40% de la nota** → prioridad máxima.
+5. **Frontend es 100% nuevo** (la referencia lo tiene vacío).
+6. **Migración SNMP v2c→v3** respecto a la referencia es trabajo real.
+7. **IPs de topología provisionales** hasta definir la red final.
+8. **MCP GitHub sin escritura**: se usa git directo (con token configurado) para push.
