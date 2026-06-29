@@ -78,13 +78,19 @@ Proceso de revisión (secuencial; si un paso falla, se detiene y se califica has
 ASR_Extra/
 ├── PLAN.md                      # este documento
 ├── start.sh                     # arranque: colección ansible, .env, Flask + Astro
+├── Infrastructure/              # Exportaciones GNS3 + configs (documentación/respaldo)
+│   ├── README.md
+│   ├── Topologia/              # export del proyecto GNS3 (.gns3 + recursos)
+│   └── configs/                # startup-config por dispositivo
+│       ├── R1/ R2/ R3/         # routers Cisco c7200
+│       ├── Sw1/                # switch (sin IP)
+│       └── EndDevices/         # PC1/ PC2/ SME (MV Alpine)
 ├── SME/                         # Backend Flask
 │   ├── app.py                   # app, blueprints, arranca hilos (traps + ping)
 │   ├── requirements.txt
 │   ├── .env.example
 │   ├── database/
-│   │   ├── models.py            # Router, Interface, MetricaInterfaz, Alerta
-│   │   └── seed.py              # R1/R2/R3 inicial (solo arranque/pruebas)
+│   │   └── models.py            # Router, Interface, MetricaInterfaz, Alerta
 │   ├── routes/
 │   │   ├── routers.py           # /routers/...
 │   │   ├── topologia.py         # /topologia/...
@@ -298,15 +304,23 @@ PACKET_LOSS_COUNT=10
 
 ---
 
-## 11. Topología GNS3 (seed inicial — solo arranque)
+## 11. Topología GNS3 (referencia — sin seed en BD)
 
-| Router | ip_admin | Interfaces (api / ip) |
-|--------|----------|------------------------|
+**No hay `seed.py`**: la BD arranca **vacía** y se puebla **dinámicamente** al usar
+"Explorar la red" (descubrimiento CDP/SNMP). Esto es coherente con el examen, que
+**altera la topología** (borra un dispositivo/interfaz) antes de la revisión.
+
+Las exportaciones reales de GNS3 y los `startup-config` viven en `Infrastructure/`
+(documentación/respaldo, no se leen en runtime). Tabla orientativa:
+
+| Router | ip_admin (ej.) | Interfaces (api / ip) |
+|--------|----------------|------------------------|
 | R1 | 148.204.56.1 | f0_0 → 8.8.8.1, f0_1 → 148.204.56.1 |
 | R2 | 8.8.8.5 | f0_0 → 8.8.8.5, f0_1 → 148.204.59.1 |
 | R3 | 8.8.8.9 | f0_0 → 8.8.8.9, f0_1 → 148.204.60.1 |
 
-> IPs reales (subneteo de 8.8.8.0/24) se ajustan cuando se defina la topología final. El seed NO es la verdad: la topología real se descubre por CDP.
+> IPs reales (subneteo de 8.8.8.0/24) se ajustan cuando se defina la topología final.
+> La verdad la define el descubrimiento por CDP, no esta tabla.
 
 ## 12. Config necesaria en cada router Cisco c7200
 
@@ -337,8 +351,7 @@ Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
 
 ### Fase 1 — Cimientos
 - [ ] `SME/database/models.py` (4 modelos).
-- [ ] `SME/database/seed.py` (R1/R2/R3).
-- [ ] `SME/app.py` (Flask, CORS, db.create_all, registro de blueprints, arranque de hilos).
+- [ ] `SME/app.py` (Flask, CORS, db.create_all sobre BD vacía, registro de blueprints, arranque de hilos).
 - [ ] `SME/requirements.txt`, `SME/.env.example`, `.gitignore`.
 
 ### Fase 2 — Capa SNMPv3
@@ -380,7 +393,7 @@ Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
 ## 15. Riesgos y notas
 
 1. **PDF contradice SNMP v2c vs v3.** Decisión: **SNMPv3**. Confirmar con el profesor; el helper se diseña aislado por si hubiera que añadir v2c.
-2. **El examen altera la topología** → el descubrimiento por CDP debe ser robusto y dinámico; el seed es solo arranque.
+2. **El examen altera la topología** → el descubrimiento por CDP debe ser robusto y dinámico; la BD arranca vacía (sin seed) y se puebla al explorar.
 3. **Sin enrutamiento previo** en los configs de GNS3 (lo activa la app).
 4. **Gráficas + alertas = ~40% de la nota** → prioridad máxima.
 5. **Frontend es 100% nuevo** (la referencia lo tiene vacío).
