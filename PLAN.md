@@ -80,11 +80,16 @@ ASR_Extra/
 ├── start.sh                     # arranque: colección ansible, .env, Flask + Astro
 ├── Infrastructure/              # Exportaciones GNS3 + configs (documentación/respaldo)
 │   ├── README.md
-│   ├── Topologia/              # export del proyecto GNS3 (.gns3 + recursos)
-│   └── configs/                # startup-config por dispositivo
-│       ├── R1/ R2/ R3/         # routers Cisco c7200
-│       ├── Sw1/                # switch (sin IP)
-│       └── EndDevices/         # PC1/ PC2/ SME (MV Alpine)
+│   ├── Topologia/               # export del proyecto GNS3 (.gns3 + recursos)
+│   └── configs/                 # startup-config por dispositivo
+│       ├── R1/                  # router Cisco c7200
+│       ├── R2/                  # router Cisco c7200
+│       ├── R3/                  # router Cisco c7200
+│       ├── Sw1/                 # switch (sin IP)
+│       └── EndDevices/
+│           ├── PC1/             # VPCS
+│           ├── PC2/             # VPCS
+│           └── SME/             # MV Alpine (aloja el sistema)
 ├── SME/                         # Backend Flask
 │   ├── app.py                   # app, blueprints, arranca hilos (traps + ping)
 │   ├── requirements.txt
