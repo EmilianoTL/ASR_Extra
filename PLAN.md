@@ -328,15 +328,16 @@ Las exportaciones reales de GNS3 y los `startup-config` viven en `Infrastructure
 (documentación/respaldo, no se leen en runtime). Topología en **cadena R1–R2–R3**
 con enlaces inter-router de **subneteo /30** (punto a punto) de `8.8.8.0/24`:
 
-| Router | Enlaces /30 (api / ip) | LAN (api / ip) | ip_admin (ej.) |
-|--------|------------------------|----------------|----------------|
-| R1 | f0_0 → 8.8.8.1 (R1-R2) | f1_0 → 148.204.56.1/24 | 148.204.56.1 |
-| R2 | f0_0 → 8.8.8.2 (R1-R2), f0_1 → 8.8.8.5 (R2-R3) | f1_0 → 148.204.59.1/24 | 8.8.8.5 |
-| R3 | f0_0 → 8.8.8.6 (R2-R3) | f1_0 → 148.204.60.1/24 | 8.8.8.6 |
+| Router | LAN (api / ip) | Enlaces /30 (api / ip) | ip_admin (ej.) |
+|--------|----------------|------------------------|----------------|
+| R1 | f0_0 → 148.204.56.1/24 (SME) | f1_0 → 8.8.8.1 (R1-R2) | 148.204.56.1 |
+| R2 | f0_0 → 148.204.59.1/24 (PC1) | f1_0 → 8.8.8.2 (R1-R2), f1_1 → 8.8.8.5 (R2-R3) | 8.8.8.5 |
+| R3 | f0_0 → 148.204.60.1/24 (PC2) | f1_1 → 8.8.8.6 (R2-R3) | 8.8.8.6 |
 
 Subredes /30: `8.8.8.0/30` (R1-R2), `8.8.8.4/30` (R2-R3). R1 y R3 NO están
-conectados entre sí. La **SME** cuelga de la LAN de R1 (`148.204.56.10/24`);
-ver `Infrastructure/configs/EndDevices/SME/`.
+conectados entre sí. La **SME** cuelga de la LAN de R1 (`148.204.56.10/24`, vía
+Switch1); ver `Infrastructure/configs/EndDevices/SME/`. El convertidor de nombres
+del backend debe soportar `f1_1` ↔ `FastEthernet1/1`.
 
 > IPs reales se ajustan cuando se defina la topología final. La verdad la define el
 > descubrimiento por CDP, no esta tabla. Con /30 P2P la SME alcanza a R2/R3 vía R1

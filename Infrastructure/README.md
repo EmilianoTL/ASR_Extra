@@ -46,19 +46,19 @@ desde `8.8.8.0/24`:
 
 | Enlace | Subred /30 | Extremo A | Extremo B |
 |--------|-----------|-----------|-----------|
-| R1 ↔ R2 | `8.8.8.0/30` | R1 f0/0 = **8.8.8.1** | R2 f0/0 = 8.8.8.2 |
-| R2 ↔ R3 | `8.8.8.4/30` | R2 f0/1 = **8.8.8.5** | R3 f0/0 = 8.8.8.6 |
+| R1 ↔ R2 | `8.8.8.0/30` | R1 f1/0 = **8.8.8.1** | R2 f1/0 = 8.8.8.2 |
+| R2 ↔ R3 | `8.8.8.4/30` | R2 f1/1 = **8.8.8.5** | R3 f1/1 = 8.8.8.6 |
 
 ### LANs y hosts (ajustable)
 
 | Dispositivo | Interfaz LAN | IP | Notas |
 |-------------|--------------|----|-------|
-| R1 | f1/0 | 148.204.56.1/24 | LAN de gestión (aloja la SME, vía Sw1) |
-| R2 | f1/0 | 148.204.59.1/24 | aloja PC1 |
-| R3 | f1/0 | 148.204.60.1/24 | aloja PC2 |
+| R1 | f0/0 | 148.204.56.1/24 | LAN de gestión (aloja la SME, vía Switch1) |
+| R2 | f0/0 | 148.204.59.1/24 | aloja PC1 |
+| R3 | f0/0 | 148.204.60.1/24 | aloja PC2 |
 | SME | eth0 | 148.204.56.10/24 | eth1 por DHCP (NAT). Destino de traps |
-| PC1 | — | 148.204.59.10 (gw .1) | en LAN de R2 |
-| PC2 | — | 148.204.60.10 (gw .1) | en LAN de R3 |
+| PC1 | — | 148.204.59.10 (gw .1) | en LAN de R2 (R2 f0/0) |
+| PC2 | — | 148.204.60.10 (gw .1) | en LAN de R3 (R3 f0/0) |
 
 > Con enlaces **/30 punto a punto no hay segmento compartido** entre los tres
 > routers. La **SME cuelga de la LAN de R1** y alcanza a R2/R3 a través de R1 una vez

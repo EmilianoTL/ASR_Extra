@@ -7,15 +7,15 @@ username admin privilege 15 secret cisco123
 crypto key generate rsa general-keys modulus 1024
 ip ssh version 2
 interface FastEthernet0/0
-ip address 8.8.8.2 255.255.255.252
-no shutdown
-exit
-interface FastEthernet0/1
-ip address 8.8.8.5 255.255.255.252
+ip address 148.204.59.1 255.255.255.0
 no shutdown
 exit
 interface FastEthernet1/0
-ip address 148.204.59.1 255.255.255.0
+ip address 8.8.8.2 255.255.255.252
+no shutdown
+exit
+interface FastEthernet1/1
+ip address 8.8.8.5 255.255.255.252
 no shutdown
 exit
 line vty 0 4
