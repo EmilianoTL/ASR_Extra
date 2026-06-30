@@ -370,14 +370,14 @@ line vty 0 4
 
 Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
 
-### Fase 1 — Cimientos
-- [ ] `SME/database/models.py` (4 modelos).
-- [ ] `SME/app.py` (Flask, CORS, db.create_all sobre BD vacía, registro de blueprints, arranque de hilos).
-- [ ] `SME/requirements.txt`, `SME/.env.example`, `.gitignore`.
+### Fase 1 — Cimientos ✅
+- [x] `SME/database/models.py` (4 modelos).
+- [x] `SME/app.py` (Flask, CORS, db.create_all sobre BD vacía, registro de blueprints, arranque de hilos).
+- [x] `SME/requirements.txt`, `SME/.env.example`, `.gitignore`.
 
-### Fase 2 — Capa SNMPv3
-- [ ] `SME/network_utils/PySnmpV3.py` (UsmUserData; get/walk sync+async).
-- [ ] Prueba unitaria/manual del helper.
+### Fase 2 — Capa SNMPv3 ✅
+- [x] `SME/network_utils/PySnmpV3.py` (UsmUserData; get/walk sync+async).
+- [x] Prueba unitaria/manual del helper.
 
 ### Fase 3 — Features backend
 - [ ] `PySnmpInfo.py` + `routes/routers.py` (info dispositivos, refresco SNMP).
