@@ -78,18 +78,24 @@ Proceso de revisión (secuencial; si un paso falla, se detiene y se califica has
 ASR_Extra/
 ├── PLAN.md                      # este documento
 ├── start.sh                     # arranque: colección ansible, .env, Flask + Astro
-├── Infrastructure/              # Exportaciones GNS3 + configs (documentación/respaldo)
-│   ├── README.md
+├── Infrastructure/              # Exportaciones GNS3 + configs + scripts de despliegue
+│   ├── README.md                # topología, direccionamiento y config base
 │   ├── Topologia/               # export del proyecto GNS3 (.gns3 + recursos)
-│   └── configs/                 # startup-config por dispositivo
-│       ├── R1/                  # router Cisco c7200
-│       ├── R2/                  # router Cisco c7200
-│       ├── R3/                  # router Cisco c7200
+│   └── configs/
+│       ├── R1/R1_startup-config.cfg   # interfaces + SSH + SNMPv3 + CDP (sin enrutamiento)
+│       ├── R2/R2_startup-config.cfg
+│       ├── R3/R3_startup-config.cfg
 │       ├── Sw1/                 # switch (sin IP)
 │       └── EndDevices/
-│           ├── PC1/             # VPCS
-│           ├── PC2/             # VPCS
-│           └── SME/             # MV Alpine (aloja el sistema)
+│           ├── PC1/PC1_startup.vpc    # VPCS (LAN de R2)
+│           ├── PC2/PC2_startup.vpc    # VPCS (LAN de R3)
+│           └── SME/             # MV Alpine: red + scripts de arranque
+│               ├── interfaces   # eth0 estática (topología) + eth1 DHCP (NAT)
+│               ├── resolv.conf  # DNS 8.8.8.8
+│               ├── sme-routes.sh# rutas: topología->eth0, resto->eth1, DNS /32
+│               ├── setup_sme.sh # provisión: red+paquetes+clona repo+venv+cisco.ios
+│               ├── sync_github.sh# git pull de la rama en la SME
+│               └── README.md    # diseño de red de la SME + uso
 ├── SME/                         # Backend Flask
 │   ├── app.py                   # app, blueprints, arranca hilos (traps + ping)
 │   ├── requirements.txt

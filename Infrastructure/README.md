@@ -35,11 +35,38 @@ Infrastructure/
 | PC1, PC2 | VPCS | Hosts finales |
 | SME | Alpine Linux | MV que corre el backend Flask + frontend Astro |
 
-- Subredes derivadas del **subneteo de `8.8.8.0/24`** para los enlaces.
 - Los routers arrancan **sin protocolo de enrutamiento** (la app activa RIP/OSPF).
 - Solo tienen configuradas y levantadas las IP de sus interfaces.
 
+### Direccionamiento de ejemplo (ajustable)
+
+| Dispositivo | Core 8.8.8.0/24 (vía Sw1) | LAN propia | Notas |
+|-------------|---------------------------|------------|-------|
+| R1 | f0/0 = 8.8.8.1 | f0/1 = 148.204.56.1/24 | `ip_admin` (para el sistema) = **8.8.8.1** |
+| R2 | f0/0 = 8.8.8.5 | f0/1 = 148.204.59.1/24 | `ip_admin` = **8.8.8.5** |
+| R3 | f0/0 = 8.8.8.9 | f0/1 = 148.204.60.1/24 | `ip_admin` = **8.8.8.9** |
+| SME | eth0 = 8.8.8.100 | — | eth1 por DHCP (NAT). Destino de traps |
+| PC1 | — | 148.204.59.10 (gw .1) | en LAN de R2 |
+| PC2 | — | 148.204.60.10 (gw .1) | en LAN de R3 |
+
+> El **core 8.8.8.0/24** es un segmento compartido por Sw1: R1/R2/R3 y la SME están
+> directamente conectados, así que el **polling y los traps SNMP funcionan sin
+> necesidad de protocolo de enrutamiento**. Las LAN de cada router se alcanzan desde
+> la SME mediante rutas estáticas vía el core (ver `configs/EndDevices/SME/`).
+> El `ip_admin` que usará el sistema es la **IP de cada router en el core**.
+
+## Configuraciones incluidas
+
+- `configs/R1|R2|R3/Rx_startup-config.cfg` — config completa de cada router.
+- `configs/EndDevices/SME/` — red de la SME + scripts (`setup_sme.sh`,
+  `sync_github.sh`, `sme-routes.sh`). Ver su README para el detalle.
+- `configs/EndDevices/PC1|PC2/*.vpc` — direccionamiento de los VPCS.
+
 ## Configuración base requerida por router (SNMPv3 + SSH + CDP)
+
+> El comando `crypto key generate rsa modulus 1024` es de modo config interactivo
+> (genera la llave para SSH) y **no** aparece en el `startup-config`; ejecútalo a mano
+> una vez por router después de definir `hostname` e `ip domain-name`.
 
 ```
 ! SNMPv3 (SHA + AES128)

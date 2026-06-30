@@ -1,0 +1,4 @@
+# PC1 (VPCS) — host en la LAN de R2 (148.204.59.0/24)
+# Pega estos comandos en la consola del VPCS, o guárdalos como startup.
+ip 148.204.59.10 255.255.255.0 148.204.59.1
+save

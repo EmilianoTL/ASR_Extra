@@ -1,0 +1,30 @@
+# =====================================================================
+#  /etc/network/interfaces  —  SME (Alpine Linux)
+# ---------------------------------------------------------------------
+#  eth0 -> Red de TOPOLOGÍA / gestión (hacia los routers, vía Sw1).
+#          IP estática, SIN gateway por defecto.
+#  eth1 -> Internet vía NAT (DHCP). Provee la ruta por defecto y sirve
+#          para 'apk update' y todo lo de la máquina.
+#
+#  Regla: lo de la topología sale por eth0; todo lo demás por eth1.
+#  Las rutas específicas las aplica /usr/local/sbin/sme-routes.sh
+#  (incluye la excepción del DNS 8.8.8.8 -> eth1).
+# =====================================================================
+
+auto lo
+iface lo inet loopback
+
+# --- eth0: core de gestión 8.8.8.0/24 (SME = .100) ---
+auto eth0
+iface eth0 inet static
+    address 8.8.8.100
+    netmask 255.255.255.0
+    # Aplica rutas de topología al levantar eth0
+    post-up   /usr/local/sbin/sme-routes.sh up   || true
+    pre-down  /usr/local/sbin/sme-routes.sh down || true
+
+# --- eth1: Internet por DHCP (NAT) ---
+auto eth1
+iface eth1 inet dhcp
+    # Tras obtener DHCP, fija la excepción del DNS por eth1
+    post-up   /usr/local/sbin/sme-routes.sh dns  || true
