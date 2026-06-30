@@ -77,14 +77,18 @@ desde `8.8.8.0/24`:
 
 ## Configuración base requerida por router (SNMPv3 + SSH + CDP)
 
-> El comando `crypto key generate rsa modulus 1024` es de modo config interactivo
-> (genera la llave para SSH) y **no** aparece en el `startup-config`; ejecútalo a mano
-> una vez por router después de definir `hostname` e `ip domain-name`.
+> **Copia y pega por comandos:** usa los archivos `configs/Rx/Rx_comandos.txt`
+> (sin comentarios, ya incluyen `configure terminal` … `end` / `write memory`).
+>
+> Notas del lab (c7200 IOS):
+> - La llave SSH se genera con `crypto key generate rsa general-keys modulus 1024`
+>   (después de fijar `hostname` e `ip domain-name`).
+> - El protocolo de privacidad SNMPv3 que acepta el equipo es **DES56** (no AES128).
 
 ```
-! SNMPv3 (SHA + AES128)
+! SNMPv3 (SHA + DES56)
 snmp-server group GRUPO_V3 v3 priv
-snmp-server user snmp_user GRUPO_V3 v3 auth sha authpass123 priv aes 128 privpass123
+snmp-server user snmp_user GRUPO_V3 v3 auth sha authpass123 priv des56 privpass123
 snmp-server enable traps
 snmp-server host <IP_MV_ALPINE> version 3 priv snmp_user
 snmp-server location <ubicacion>
@@ -94,7 +98,7 @@ cdp run
 ! SSH para Ansible/Netmiko
 hostname R1
 ip domain-name lab.local
-crypto key generate rsa modulus 1024
+crypto key generate rsa general-keys modulus 1024
 username admin privilege 15 secret cisco123
 enable secret enable123
 line vty 0 4

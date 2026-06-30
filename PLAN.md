@@ -11,7 +11,7 @@
 
 | Tema | Decisión |
 |------|----------|
-| SNMP | **SNMPv3** (SHA auth + AES128 priv). NO v2c. |
+| SNMP | **SNMPv3** (SHA auth + DES56 priv). NO v2c. |
 | Credenciales SSH/SNMP | **Desde `.env`** (no formulario en la web). |
 | Config de routers | **Ansible** (`cisco.ios`) para toda configuración. |
 | Descubrimiento | **Netmiko + CDP (BFS)**. |
@@ -195,11 +195,14 @@ Diferencias vs referencia: se elimina `Usuario`/`router_usuarios`; `MetricaOctet
 
 ## 6. SNMPv3 — detalle
 
-Credenciales desde `.env`: `SNMP_USER`, `SNMP_AUTH_PASS` (SHA), `SNMP_PRIV_PASS` (AES128).
+Credenciales desde `.env`: `SNMP_USER`, `SNMP_AUTH_PASS` (SHA), `SNMP_PRIV_PASS` (DES56).
+
+> Nota: los routers c7200 del lab solo aceptan **DES56** como protocolo de privacidad
+> SNMPv3 (no AES128). Por eso `privProtocol` es DES (`usmDESPrivProtocol`).
 
 ```python
 UsmUserData(SNMP_USER, authKey=SNMP_AUTH_PASS, privKey=SNMP_PRIV_PASS,
-            authProtocol=usmHMACSHAAuthProtocol, privProtocol=usmAesCfb128Protocol)
+            authProtocol=usmHMACSHAAuthProtocol, privProtocol=usmDESPrivProtocol)
 ```
 
 `PySnmpV3.py` expone `snmp_get/snmp_walk` (sync) y `snmp_get_async/snmp_walk_async`.
@@ -343,7 +346,7 @@ ver `Infrastructure/configs/EndDevices/SME/`.
 
 ```
 snmp-server group GRUPO_V3 v3 priv
-snmp-server user snmp_user GRUPO_V3 v3 auth sha authpass123 priv aes 128 privpass123
+snmp-server user snmp_user GRUPO_V3 v3 auth sha authpass123 priv des56 privpass123
 snmp-server enable traps
 snmp-server host <IP_MV_ALPINE> version 3 priv snmp_user
 snmp-server location <ubicacion>
@@ -351,7 +354,7 @@ snmp-server contact <contacto>
 cdp run
 hostname R1
 ip domain-name lab.local
-crypto key generate rsa modulus 1024
+crypto key generate rsa general-keys modulus 1024
 username admin privilege 15 secret cisco123
 enable secret enable123
 line vty 0 4
@@ -467,7 +470,7 @@ Principios:
 - Tipos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`.
 - Ejemplos:
   - `feat(models): agrega Router, Interface, MetricaInterfaz y Alerta`
-  - `feat(snmp): implementa helper SNMPv3 con UsmUserData (SHA+AES128)`
+  - `feat(snmp): implementa helper SNMPv3 con UsmUserData (SHA+DES56)`
   - `feat(viz): grafo de topología con networkx y figura Plotly`
   - `fix(metricas): maneja wrap-around de Counter32 en ifInOctets`
 - **Un cambio lógico por commit** (atómico), mensaje que explique el *porqué* cuando no

@@ -1,0 +1,33 @@
+enable
+configure terminal
+hostname R2
+ip domain-name lab.local
+enable secret enable123
+username admin privilege 15 secret cisco123
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+interface FastEthernet0/0
+ip address 8.8.8.2 255.255.255.252
+no shutdown
+exit
+interface FastEthernet0/1
+ip address 8.8.8.5 255.255.255.252
+no shutdown
+exit
+interface FastEthernet1/0
+ip address 148.204.59.1 255.255.255.0
+no shutdown
+exit
+line vty 0 4
+transport input ssh
+login local
+exit
+snmp-server group GRUPO_V3 v3 priv
+snmp-server user snmp_user GRUPO_V3 v3 auth sha authpass123 priv des56 privpass123
+snmp-server enable traps
+snmp-server host 148.204.56.10 version 3 priv snmp_user
+snmp-server location Lab-ASR-Site-R2
+snmp-server contact admin@lab.local
+cdp run
+end
+write memory
