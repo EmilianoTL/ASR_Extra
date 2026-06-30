@@ -322,16 +322,21 @@ PACKET_LOSS_COUNT=10
 **altera la topología** (borra un dispositivo/interfaz) antes de la revisión.
 
 Las exportaciones reales de GNS3 y los `startup-config` viven en `Infrastructure/`
-(documentación/respaldo, no se leen en runtime). Tabla orientativa:
+(documentación/respaldo, no se leen en runtime). Enlaces inter-router con
+**subneteo /30** (punto a punto) de `8.8.8.0/24`, en triángulo R1–R2–R3:
 
-| Router | ip_admin (ej.) | Interfaces (api / ip) |
-|--------|----------------|------------------------|
-| R1 | 148.204.56.1 | f0_0 → 8.8.8.1, f0_1 → 148.204.56.1 |
-| R2 | 8.8.8.5 | f0_0 → 8.8.8.5, f0_1 → 148.204.59.1 |
-| R3 | 8.8.8.9 | f0_0 → 8.8.8.9, f0_1 → 148.204.60.1 |
+| Router | Enlaces /30 (api / ip) | LAN (api / ip) | ip_admin (ej.) |
+|--------|------------------------|----------------|----------------|
+| R1 | f0_0 → 8.8.8.1 (R1-R2), f0_1 → 8.8.8.10 (R1-R3) | f1_0 → 148.204.56.1/24 | 148.204.56.1 |
+| R2 | f0_0 → 8.8.8.2 (R1-R2), f0_1 → 8.8.8.5 (R2-R3) | f1_0 → 148.204.59.1/24 | 8.8.8.5 |
+| R3 | f0_0 → 8.8.8.6 (R2-R3), f0_1 → 8.8.8.9 (R3-R1) | f1_0 → 148.204.60.1/24 | 8.8.8.9 |
 
-> IPs reales (subneteo de 8.8.8.0/24) se ajustan cuando se defina la topología final.
-> La verdad la define el descubrimiento por CDP, no esta tabla.
+Subredes /30: `8.8.8.0/30` (R1-R2), `8.8.8.4/30` (R2-R3), `8.8.8.8/30` (R3-R1).
+La **SME** cuelga de la LAN de R1 (`148.204.56.10/24`); ver `Infrastructure/configs/EndDevices/SME/`.
+
+> IPs reales se ajustan cuando se defina la topología final. La verdad la define el
+> descubrimiento por CDP, no esta tabla. Con /30 P2P la SME alcanza a R2/R3 vía R1
+> una vez activado el enrutamiento (el examen lo configura antes de explorar).
 
 ## 12. Config necesaria en cada router Cisco c7200
 

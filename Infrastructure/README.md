@@ -38,22 +38,35 @@ Infrastructure/
 - Los routers arrancan **sin protocolo de enrutamiento** (la app activa RIP/OSPF).
 - Solo tienen configuradas y levantadas las IP de sus interfaces.
 
-### Direccionamiento de ejemplo (ajustable)
+### Enlaces inter-router con subneteo /30 (punto a punto)
 
-| Dispositivo | Core 8.8.8.0/24 (vía Sw1) | LAN propia | Notas |
-|-------------|---------------------------|------------|-------|
-| R1 | f0/0 = 8.8.8.1 | f0/1 = 148.204.56.1/24 | `ip_admin` (para el sistema) = **8.8.8.1** |
-| R2 | f0/0 = 8.8.8.5 | f0/1 = 148.204.59.1/24 | `ip_admin` = **8.8.8.5** |
-| R3 | f0/0 = 8.8.8.9 | f0/1 = 148.204.60.1/24 | `ip_admin` = **8.8.8.9** |
-| SME | eth0 = 8.8.8.100 | — | eth1 por DHCP (NAT). Destino de traps |
+Los enlaces entre routers se subnetean a **/30** (2 hosts por enlace) desde
+`8.8.8.0/24`, formando un **triángulo** R1–R2–R3:
+
+| Enlace | Subred /30 | Extremo A | Extremo B |
+|--------|-----------|-----------|-----------|
+| R1 ↔ R2 | `8.8.8.0/30` | R1 f0/0 = **8.8.8.1** | R2 f0/0 = 8.8.8.2 |
+| R2 ↔ R3 | `8.8.8.4/30` | R2 f0/1 = **8.8.8.5** | R3 f0/0 = 8.8.8.6 |
+| R3 ↔ R1 | `8.8.8.8/30` | R3 f0/1 = **8.8.8.9** | R1 f0/1 = 8.8.8.10 |
+
+### LANs y hosts (ajustable)
+
+| Dispositivo | Interfaz LAN | IP | Notas |
+|-------------|--------------|----|-------|
+| R1 | f1/0 | 148.204.56.1/24 | LAN de gestión (aloja la SME, vía Sw1) |
+| R2 | f1/0 | 148.204.59.1/24 | aloja PC1 |
+| R3 | f1/0 | 148.204.60.1/24 | aloja PC2 |
+| SME | eth0 | 148.204.56.10/24 | eth1 por DHCP (NAT). Destino de traps |
 | PC1 | — | 148.204.59.10 (gw .1) | en LAN de R2 |
 | PC2 | — | 148.204.60.10 (gw .1) | en LAN de R3 |
 
-> El **core 8.8.8.0/24** es un segmento compartido por Sw1: R1/R2/R3 y la SME están
-> directamente conectados, así que el **polling y los traps SNMP funcionan sin
-> necesidad de protocolo de enrutamiento**. Las LAN de cada router se alcanzan desde
-> la SME mediante rutas estáticas vía el core (ver `configs/EndDevices/SME/`).
-> El `ip_admin` que usará el sistema es la **IP de cada router en el core**.
+> Con enlaces **/30 punto a punto no hay segmento compartido** entre los tres
+> routers. La **SME cuelga de la LAN de R1** y alcanza a R2/R3 a través de R1 una vez
+> que la app activa el enrutamiento (RIP/OSPF). El examen configura el enrutamiento
+> **antes** de explorar/monitorear, así que el orden es consistente.
+> El `ip_admin` que use el sistema para cada router será una IP suya alcanzable
+> (R1: 148.204.56.1 directa; R2/R3: vía R1 tras el enrutamiento). El descubrimiento
+> CDP poblará las IPs reales.
 
 ## Configuraciones incluidas
 

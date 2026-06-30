@@ -5,28 +5,33 @@ interfaces** con propósitos separados:
 
 | Interfaz | Propósito | Config |
 |----------|-----------|--------|
-| **eth0** | Red de **topología / gestión** (hacia los routers, vía Sw1) | IP **estática** `8.8.8.100/24`, **sin** gateway |
+| **eth0** | Red de **topología / gestión** (LAN de R1, vía Sw1) | IP **estática** `148.204.56.10/24`, **sin** gateway |
 | **eth1** | **Internet** (NAT) para `apk update` y todo lo de la máquina | **DHCP**, da la **ruta por defecto** y el DNS |
 
+### Topología con enlaces /30 (punto a punto)
+Los enlaces entre routers usan **subneteo /30** de `8.8.8.0/24` (2 hosts por
+enlace), así que **no hay un segmento compartido** entre los tres routers. La SME
+cuelga de la **LAN de R1** (`148.204.56.0/24`) y su único salto hacia toda la
+topología es **R1 (`148.204.56.1`)**. R1 alcanza a R2/R3 una vez que la app activa
+RIP/OSPF (el examen configura el enrutamiento antes de explorar/monitorear).
+
 ### Regla de enrutamiento
-- **Las redes de la topología salen por eth0**; **todo lo demás por eth1**.
+- **Las redes de la topología salen por eth0** (vía R1); **todo lo demás por eth1**.
 - La ruta por defecto (`0.0.0.0/0`) la pone el DHCP de eth1 → Internet.
-- Rutas específicas hacia las LAN detrás de cada router van por eth0 (vía la IP de
-  cada router en el core). Las aplica `sme-routes.sh`.
 
 ```
-Topología (eth0):                         Internet (eth1):
-  8.8.8.0/24      -> directamente conectada   0.0.0.0/0   -> gateway DHCP (NAT)
-  148.204.56.0/24 -> via 8.8.8.1 (R1)         8.8.8.8/32  -> gateway DHCP (NAT)  <-- excepción DNS
-  148.204.59.0/24 -> via 8.8.8.5 (R2)
-  148.204.60.0/24 -> via 8.8.8.9 (R3)
+Topología (eth0, vía R1 = 148.204.56.1):   Internet (eth1):
+  148.204.56.0/24 -> directamente conectada    0.0.0.0/0   -> gateway DHCP (NAT)
+  8.8.8.0/24      -> via 148.204.56.1 (R1)      8.8.8.8/32  -> gateway DHCP (NAT)  <-- excepción DNS
+  148.204.59.0/24 -> via 148.204.56.1 (R1)
+  148.204.60.0/24 -> via 148.204.56.1 (R1)
 ```
 
 ### ⚠️ Conflicto DNS 8.8.8.8 vs red 8.8.8.0/24 (importante)
-El DNS de Google **8.8.8.8 cae dentro de `8.8.8.0/24`**, que es la red del core
-(eth0). Sin tratamiento, las consultas a 8.8.8.8 saldrían hacia el lab y NO a
-Internet. Por eso `sme-routes.sh` añade una ruta **`8.8.8.8/32` por eth1** (más
-específica → gana), de modo que el DNS sí resuelve por la NAT.
+El DNS de Google **8.8.8.8 cae dentro de `8.8.8.0/24`**, que va por eth0 (topología).
+Sin tratamiento, las consultas a 8.8.8.8 saldrían hacia el lab y NO a Internet. Por
+eso `sme-routes.sh` añade una ruta **`8.8.8.8/32` por eth1** (más específica → gana),
+de modo que el DNS sí resuelve por la NAT.
 
 > Si prefieres evitar el conflicto por completo, usa otro DNS público (p. ej.
 > `1.1.1.1`) en `resolv.conf` y la excepción /32 deja de ser necesaria. Se dejó

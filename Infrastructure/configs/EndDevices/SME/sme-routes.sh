@@ -16,21 +16,22 @@
 set -u
 
 # ---- CONFIG (ajusta a tu topología real) ----------------------------
-IF_TOPO="${IF_TOPO:-eth0}"        # interfaz hacia los routers (core)
+IF_TOPO="${IF_TOPO:-eth0}"        # interfaz hacia los routers (LAN de R1)
 IF_NAT="${IF_NAT:-eth1}"          # interfaz hacia Internet (NAT/DHCP)
 
-# Gateways por router en el core 8.8.8.0/24 (para alcanzar sus LAN):
-R1_CORE="${R1_CORE:-8.8.8.1}"
-R2_CORE="${R2_CORE:-8.8.8.5}"
-R3_CORE="${R3_CORE:-8.8.8.9}"
+# La SME cuelga de la LAN de R1 (148.204.56.0/24). Con enlaces /30 punto a
+# punto entre routers NO hay segmento compartido, así que el único salto de
+# la SME hacia toda la topología es R1. (R1 alcanza al resto una vez que la
+# app activa RIP/OSPF.)
+GW_TOPO="${GW_TOPO:-148.204.56.1}"   # R1, gateway de la SME en eth0
 
-# Redes de la topología que deben ir por eth0.
-# Formato: "CIDR VIA_GATEWAY". 8.8.8.0/24 es directamente conectada (eth0),
-# por eso no necesita 'via'; las LAN detrás de cada router van vía su core IP.
+# Redes de la topología que deben ir por eth0 (todas vía R1).
+# 148.204.56.0/24 es directamente conectada (no necesita ruta).
+# Formato: "CIDR VIA_GATEWAY".
 TOPO_ROUTES="
-148.204.56.0/24 ${R1_CORE}
-148.204.59.0/24 ${R2_CORE}
-148.204.60.0/24 ${R3_CORE}
+8.8.8.0/24 ${GW_TOPO}
+148.204.59.0/24 ${GW_TOPO}
+148.204.60.0/24 ${GW_TOPO}
 "
 
 # IP del DNS público que debe salir por Internet (no por el lab).

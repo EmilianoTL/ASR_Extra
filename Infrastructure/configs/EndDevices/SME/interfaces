@@ -14,12 +14,12 @@
 auto lo
 iface lo inet loopback
 
-# --- eth0: core de gestión 8.8.8.0/24 (SME = .100) ---
+# --- eth0: LAN de gestión de R1, 148.204.56.0/24 (SME = .10) ---
 auto eth0
 iface eth0 inet static
-    address 8.8.8.100
+    address 148.204.56.10
     netmask 255.255.255.0
-    # Aplica rutas de topología al levantar eth0
+    # Aplica rutas de topología al levantar eth0 (todo vía R1 = .1)
     post-up   /usr/local/sbin/sme-routes.sh up   || true
     pre-down  /usr/local/sbin/sme-routes.sh down || true
 
