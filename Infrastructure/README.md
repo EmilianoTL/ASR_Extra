@@ -40,14 +40,14 @@ Infrastructure/
 
 ### Enlaces inter-router con subneteo /30 (punto a punto)
 
-Los enlaces entre routers se subnetean a **/30** (2 hosts por enlace) desde
-`8.8.8.0/24`, formando un **triángulo** R1–R2–R3:
+Topología en **cadena**: **R1 — R2 — R3** (R2 en medio; R1 y R3 NO están
+conectados entre sí). Los enlaces se subnetean a **/30** (2 hosts por enlace)
+desde `8.8.8.0/24`:
 
 | Enlace | Subred /30 | Extremo A | Extremo B |
 |--------|-----------|-----------|-----------|
 | R1 ↔ R2 | `8.8.8.0/30` | R1 f0/0 = **8.8.8.1** | R2 f0/0 = 8.8.8.2 |
 | R2 ↔ R3 | `8.8.8.4/30` | R2 f0/1 = **8.8.8.5** | R3 f0/0 = 8.8.8.6 |
-| R3 ↔ R1 | `8.8.8.8/30` | R3 f0/1 = **8.8.8.9** | R1 f0/1 = 8.8.8.10 |
 
 ### LANs y hosts (ajustable)
 
