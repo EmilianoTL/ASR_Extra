@@ -91,8 +91,8 @@ ASR_Extra/
 │           ├── PC2/PC2_startup.vpc    # VPCS (LAN de R3)
 │           └── SME/             # MV Alpine: red + scripts de arranque
 │               ├── interfaces   # eth0 estática (topología) + eth1 DHCP (NAT)
-│               ├── resolv.conf  # DNS 8.8.8.8
-│               ├── sme-routes.sh# rutas: topología->eth0, resto->eth1, DNS /32
+│               ├── resolv.conf  # DNS 1.1.1.1
+│               ├── sme-routes.sh# rutas: topología->eth0 (vía R1), resto->eth1
 │               ├── setup_sme.sh # provisión: red+paquetes+clona repo+venv+cisco.ios
 │               ├── sync_github.sh# git pull de la rama en la SME
 │               └── README.md    # diseño de red de la SME + uso

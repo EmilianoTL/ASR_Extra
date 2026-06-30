@@ -34,7 +34,7 @@ log "Instalando configuración de red..."
 install -m 0644 "$HERE/interfaces"  /etc/network/interfaces
 install -m 0644 "$HERE/resolv.conf" /etc/resolv.conf
 install -m 0755 "$HERE/sme-routes.sh" /usr/local/sbin/sme-routes.sh
-# Evita que el cliente DHCP sobrescriba nuestro resolv.conf (8.8.8.8):
+# Evita que el cliente DHCP sobrescriba nuestro resolv.conf (1.1.1.1):
 chattr +i /etc/resolv.conf 2>/dev/null || log "AVISO: chattr no disponible; el DHCP podría tocar resolv.conf"
 
 # --- 2. Levantar la red ---------------------------------------------
