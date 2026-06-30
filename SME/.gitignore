@@ -1,0 +1,16 @@
+# Entorno y secretos
+.env
+
+# Base de datos SQLite generada en runtime
+database/*.db
+*.db
+*.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Artefactos de ansible-runner
+**/artifacts/
