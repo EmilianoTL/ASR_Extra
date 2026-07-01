@@ -45,14 +45,12 @@ def crear_app():
     from routes.alertas import alertas_bp
     from routes.enrutamiento import enrutamiento_bp
     from routes.cambios import cambios_bp
+    from routes.topologia import topologia_bp
     app.register_blueprint(routers_bp, url_prefix='/routers')
     app.register_blueprint(alertas_bp, url_prefix='/alertas')
     app.register_blueprint(enrutamiento_bp, url_prefix='/enrutamiento')
     app.register_blueprint(cambios_bp, url_prefix='/cambios')
-
-    # TODO (Fase 3d): registrar blueprint de topología cuando se implemente
-    #   from routes.topologia import topologia_bp
-    #   app.register_blueprint(topologia_bp, url_prefix='/topologia')
+    app.register_blueprint(topologia_bp, url_prefix='/topologia')
 
     return app
 
