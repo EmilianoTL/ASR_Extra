@@ -83,8 +83,22 @@ echo "Rutas actuales:"; ip route show || true
 # 2. DEPENDENCIAS DEL SISTEMA
 # =====================================================================
 log "[2/4] Instalando dependencias del sistema (apk)"
-apk update
-apk add --no-cache \
+apk update || log "AVISO: 'apk update' falló (¿sin Internet?); intento continuar"
+
+# Instala cada paquete solo si falta; si uno falla, sigue con el siguiente.
+instalar_apk() {
+    for pkg in "$@"; do
+        if apk info -e "$pkg" >/dev/null 2>&1; then
+            echo "  [ya]  $pkg"
+        elif apk add --no-cache "$pkg" >/dev/null 2>&1; then
+            echo "  [ok]  $pkg"
+        else
+            echo "  [!!]  no se pudo instalar $pkg — continuo"
+        fi
+    done
+}
+
+instalar_apk \
     openssh-client \
     python3 py3-pip py3-virtualenv \
     nano \
@@ -98,17 +112,45 @@ apk add --no-cache \
 # 3. ENTORNO PYTHON + REQUIREMENTS
 # =====================================================================
 log "[3/4] Entorno Python e instalación de requirements"
-python3 -m venv "$VENV_DIR" 2>/dev/null || virtualenv "$VENV_DIR"
+if [ -d "$VENV_DIR" ] && [ -x "$VENV_DIR/bin/python" ]; then
+    echo "  [ya]  entorno virtual en $VENV_DIR"
+else
+    python3 -m venv "$VENV_DIR" 2>/dev/null || virtualenv "$VENV_DIR"
+    echo "  [ok]  entorno virtual creado en $VENV_DIR"
+fi
 # shellcheck disable=SC1091
 . "$VENV_DIR/bin/activate"
-pip install --upgrade pip
-pip install -r "$HERE/requirements.txt"
+pip install --upgrade pip >/dev/null 2>&1 || true
+
+# Intenta todo el requirements de una; si falla, instala línea por línea
+# (así un paquete problemático no impide instalar los demás).
+if pip install -r "$HERE/requirements.txt"; then
+    echo "  [ok]  requirements.txt instalado"
+else
+    log "AVISO: falló la instalación en bloque; reintento paquete por paquete"
+    while IFS= read -r linea; do
+        # ignora comentarios y líneas vacías
+        paquete="$(printf '%s' "$linea" | sed 's/#.*//' | tr -d '[:space:]')"
+        [ -z "$paquete" ] && continue
+        if pip install "$paquete" >/dev/null 2>&1; then
+            echo "  [ok]  $paquete"
+        else
+            echo "  [!!]  no se pudo instalar $paquete — continuo"
+        fi
+    done < "$HERE/requirements.txt"
+fi
 
 # =====================================================================
 # 4. COLECCIÓN ANSIBLE
 # =====================================================================
 log "[4/4] Instalando colección Ansible cisco.ios"
-ansible-galaxy collection install cisco.ios || true
+if ansible-galaxy collection list cisco.ios >/dev/null 2>&1; then
+    echo "  [ya]  colección cisco.ios"
+else
+    ansible-galaxy collection install cisco.ios \
+        && echo "  [ok]  colección cisco.ios" \
+        || echo "  [!!]  no se pudo instalar cisco.ios — continuo"
+fi
 
 log "Listo."
 echo "  - Red: eth0=${ETH0_IP} (topología), eth1=DHCP (NAT, DNS ${DNS_NAT})"
