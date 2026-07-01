@@ -300,7 +300,7 @@ PACKET_LOSS_COUNT=10
 | `ansible`, `ansible-runner` | Configuración de routers vía playbooks `cisco.ios`. |
 | **`networkx`** | **Modelo y algoritmos del grafo de topología** (nodos/aristas, layout, conectividad). |
 | **`plotly`** | **Construcción server-side de figuras**: grafo de topología y series de tiempo de métricas. |
-| `pandas` | Manejo tabular de muestras de métricas (alimenta a Plotly, cálculo de máx/promedio). |
+| ~~`pandas`~~ | **Descartado**: las estadísticas se calculan en Python puro y Plotly acepta listas nativas. Evita la cadena `pandas->python-dateutil->six` que no resuelve en el entorno musl/Alpine de la SME. |
 
 > **Plotly** y **networkx** son piezas centrales (no opcionales): networkx modela el
 > grafo descubierto y Plotly genera todas las visualizaciones. El frontend solo

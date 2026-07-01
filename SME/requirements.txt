@@ -16,4 +16,6 @@ ansible-runner==2.4.1
 networkx==3.6.1          # modelo y algoritmos del grafo de topología
 numpy==2.2.6             # requerido por los layouts de networkx (spring_layout)
 plotly==6.7.0            # figuras: grafo de topología y series de tiempo
-pandas==2.2.3            # manejo tabular de muestras de métricas
+# Nota: no se usa pandas. Las estadísticas se calculan en Python puro y Plotly
+# acepta listas nativas, evitando la cadena pandas->python-dateutil->six que no
+# resuelve en el entorno musl/Alpine de la SME.
