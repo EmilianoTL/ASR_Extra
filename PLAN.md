@@ -229,6 +229,21 @@ Playbooks (`cisco.ios.ios_config`, `save_when: always`):
 
 Conversión `f0_0` ↔ `FastEthernet0/0` con `_api_a_ios()` en `cambios.py`.
 
+### Enrutamiento inicial: configuración ENCADENADA por CDP (no Ansible)
+
+Problema del huevo y la gallina: al inicio los routers **no** tienen enrutamiento,
+así que la SME solo alcanza a R1 (directo). Ansible con inventario directo **no
+puede** llegar a R2/R3 (no hay camino de regreso a la red de gestión). Solución:
+`enrutamiento_encadenado.py` usa cada router como **salto SSH** (jump host) hacia el
+siguiente vía CDP: `SME→R1→R2→R3` (cada enlace es directo, así que el SSH anidado
+funciona sin rutas). En cada salto aplica RIP/OSPF, guarda, y recolecta vecinos
+(DFS con `netmiko` + `redispatch`). Además devuelve la topología descubierta, que
+`POST /enrutamiento/` sincroniza en la BD.
+
+- Método por defecto de `POST /enrutamiento/`: **`encadenado`**.
+- Método `ansible` (playbooks): solo cuando TODOS los routers ya son alcanzables
+  (p. ej. tras activar el enrutamiento) — para `cambios.py` sí se usa Ansible.
+
 ---
 
 ## 8. Monitoreo en background (threading)

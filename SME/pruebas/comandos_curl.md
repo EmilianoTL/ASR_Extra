@@ -108,14 +108,23 @@ curl -s -w '\nHTTP %{http_code}\n' "$BASE/alertas/?router=R1&limit=5"
 ```sh
 curl -s -w '\nHTTP %{http_code}\n' $BASE/enrutamiento/
 ```
-⚠️ activa OSPF en TODOS los routers (Ansible):
+⚠️ activa OSPF **encadenado por CDP** (salta R1->R2->R3; NO requiere enrutamiento
+previo y de paso PUEBLA la topología en la BD). Método por defecto:
 ```sh
 curl -s -X POST -H 'Content-Type: application/json' -d '{"protocolo":"ospf"}' -w '\nHTTP %{http_code}\n' $BASE/enrutamiento/
 ```
-⚠️ activa RIP en TODOS los routers (Ansible):
+⚠️ igual con RIP:
 ```sh
 curl -s -X POST -H 'Content-Type: application/json' -d '{"protocolo":"rip"}' -w '\nHTTP %{http_code}\n' $BASE/enrutamiento/
 ```
+Opcional — método Ansible (solo si TODOS los routers ya son alcanzables):
+```sh
+curl -s -X POST -H 'Content-Type: application/json' -d '{"protocolo":"ospf","metodo":"ansible"}' -w '\nHTTP %{http_code}\n' $BASE/enrutamiento/
+```
+
+> Con el método encadenado (por defecto) **ya no necesitas** explorar antes: este
+> POST configura el enrutamiento saltando router por router y llena la topología.
+> Después, `POST /topologia/` refresca el descubrimiento con todo ya alcanzable.
 
 ## 6. Cambio de datos
 
