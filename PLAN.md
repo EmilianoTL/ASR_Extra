@@ -379,13 +379,13 @@ Cada fase termina con commit + push a la rama. Marcar `[x]` al completar.
 - [x] `SME/network_utils/PySnmpV3.py` (UsmUserData; get/walk sync+async).
 - [x] Prueba unitaria/manual del helper.
 
-### Fase 3 — Features backend
-- [ ] `PySnmpInfo.py` + `routes/routers.py` (info dispositivos, refresco SNMP).
-- [ ] `PySnmpOctetos.py` + endpoints de métricas (6 contadores, hilos).
-- [ ] `PySnmpTraps.py` + `routes/alertas.py` (IFACE_UP/DOWN, CONSOLE_ACCESS).
-- [ ] `routes/topologia.py` (BFS CDP, adaptado de referencia; usar `secret=ROUTER_ENABLE`).
-- [ ] `ansible_service.py` + 5 playbooks + `routes/enrutamiento.py` + `routes/cambios.py`.
-- [ ] `ping_monitor.py` (PACKET_LOSS).
+### Fase 3 — Features backend ✅
+- [x] `PySnmpInfo.py` + `routes/routers.py` (info dispositivos, refresco SNMP).
+- [x] `PySnmpOctetos.py` + endpoints de métricas (6 contadores, hilos).
+- [x] `PySnmpTraps.py` + `routes/alertas.py` (IFACE_UP/DOWN, CONSOLE_ACCESS).
+- [x] `routes/topologia.py` (BFS CDP, adaptado de referencia; usa `secret=ROUTER_ENABLE`).
+- [x] `ansible_service.py` + 5 playbooks + `routes/enrutamiento.py` + `routes/cambios.py`.
+- [x] `ping_monitor.py` (PACKET_LOSS).
 
 ### Fase 4 — Frontend Astro
 - [ ] Scaffold Astro + Tailwind + `astro.config.mjs` + `tailwind.config.mjs` + `.env`.

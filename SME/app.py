@@ -62,9 +62,9 @@ def iniciar_monitoreo_background(app):
     para no ligar el puerto de traps ni duplicar hilos.
     """
     from network_utils.PySnmpTraps import asegurar_receptor_corriendo
+    from network_utils.ping_monitor import iniciar_monitor
     asegurar_receptor_corriendo(app)
-    # TODO (Fase 3f): from network_utils.ping_monitor import iniciar_monitor
-    #                 iniciar_monitor(app)
+    iniciar_monitor(app)
 
 
 def _registrar_rutas_base(app):
