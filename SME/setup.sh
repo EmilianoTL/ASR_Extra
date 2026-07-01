@@ -66,6 +66,8 @@ done
 } > /etc/network/interfaces
 
 # DNS: solo eth1 (Internet). eth0 no aporta DNS.
+# Quita el bit inmutable por si una corrida previa lo dejó (hace el script reejecutable).
+chattr -i /etc/resolv.conf 2>/dev/null || true
 echo "nameserver ${DNS_NAT}" > /etc/resolv.conf
 # Evita que el cliente DHCP de eth1 sobrescriba el DNS que queremos usar.
 chattr +i /etc/resolv.conf 2>/dev/null || \
