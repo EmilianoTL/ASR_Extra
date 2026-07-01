@@ -22,6 +22,7 @@ IF_NAT="${IF_NAT:-eth1}"            # interfaz hacia Internet (NAT/DHCP)
 
 ETH0_IP="${ETH0_IP:-148.204.56.10}" # IP local de la SME en la LAN de R1
 ETH0_MASK="${ETH0_MASK:-255.255.255.0}"
+ETH0_PREFIX="${ETH0_PREFIX:-24}"    # prefijo CIDR de eth0 (para el modo 'ip' directo)
 GW_TOPO="${GW_TOPO:-148.204.56.1}"  # R1: único salto hacia toda la topología
 
 # Redes de la topología alcanzables vía R1 (148.204.56.0/24 es directa).
@@ -73,10 +74,62 @@ echo "nameserver ${DNS_NAT}" > /etc/resolv.conf
 chattr +i /etc/resolv.conf 2>/dev/null || \
     log "AVISO: chattr no disponible; el DHCP podría cambiar /etc/resolv.conf"
 
-# Levanta la red y deja el servicio en el arranque.
-rc-update add networking boot 2>/dev/null || true
-rc-service networking restart || /etc/init.d/networking restart || true
+# Intenta levantar la red con el gestor de servicios disponible.
+aplicar_red_servicio() {
+    if command -v rc-service >/dev/null 2>&1; then
+        if rc-service networking restart; then return 0; fi
+    fi
+    if [ -x /etc/init.d/networking ]; then
+        if /etc/init.d/networking restart; then return 0; fi
+    fi
+    if command -v service >/dev/null 2>&1; then
+        if service networking restart; then return 0; fi
+    fi
+    if command -v ifup >/dev/null 2>&1; then
+        ifdown "$IF_TOPO" 2>/dev/null || true
+        if ifup "$IF_TOPO" 2>/dev/null; then
+            ifup "$IF_NAT" 2>/dev/null || true
+            return 0
+        fi
+    fi
+    return 1
+}
 
+# Aplica la red directamente con 'ip' (fallback sin gestor de servicios).
+# Idempotente: usa 'ip addr replace' / 'ip route replace'.
+aplicar_red_manual() {
+    ip link set "$IF_TOPO" up 2>/dev/null || true
+    if ip addr replace "${ETH0_IP}/${ETH0_PREFIX}" dev "$IF_TOPO" 2>/dev/null; then
+        echo "  eth0 -> ${ETH0_IP}/${ETH0_PREFIX}"
+    else
+        echo "  AVISO: no se pudo asignar IP a ${IF_TOPO}"
+    fi
+    for net in $TOPO_NETS; do
+        if ip route replace "$net" via "$GW_TOPO" dev "$IF_TOPO" 2>/dev/null; then
+            echo "  ruta ${net} via ${GW_TOPO} dev ${IF_TOPO}"
+        fi
+    done
+    # eth1: si no tiene IPv4, intenta DHCP (normalmente ya la tiene de la NAT).
+    if ! ip -4 addr show "$IF_NAT" 2>/dev/null | grep -q 'inet '; then
+        ip link set "$IF_NAT" up 2>/dev/null || true
+        if command -v udhcpc >/dev/null 2>&1; then
+            udhcpc -i "$IF_NAT" -q -n 2>/dev/null || true
+        elif command -v dhclient >/dev/null 2>&1; then
+            dhclient "$IF_NAT" 2>/dev/null || true
+        fi
+    fi
+}
+
+rc-update add networking boot 2>/dev/null || true
+if aplicar_red_servicio; then
+    echo "  Red aplicada vía gestor de servicios."
+else
+    log "AVISO: sin gestor de red (rc-service/service/ifup); aplico con 'ip' directamente"
+fi
+# Garantía: asegura eth0 + rutas aunque el gestor no lo haya hecho (idempotente).
+aplicar_red_manual
+
+echo ""
 echo "Rutas actuales:"; ip route show || true
 
 # =====================================================================
