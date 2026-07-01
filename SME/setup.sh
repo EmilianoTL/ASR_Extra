@@ -86,14 +86,24 @@ log "[2/4] Instalando dependencias del sistema (apk)"
 apk update || log "AVISO: 'apk update' falló (¿sin Internet?); intento continuar"
 
 # Instala cada paquete solo si falta; si uno falla, sigue con el siguiente.
+# Lleva conteo de omitidos / instalados / fallidos y muestra un resumen.
+_apk_ya=0
+_apk_ok=0
+_apk_fail=0
+_apk_fallidos=""
+
 instalar_apk() {
     for pkg in "$@"; do
         if apk info -e "$pkg" >/dev/null 2>&1; then
-            echo "  [ya]  $pkg"
+            echo "  [ya]  $pkg (ya instalado, sigo con el siguiente)"
+            _apk_ya=$((_apk_ya + 1))
         elif apk add --no-cache "$pkg" >/dev/null 2>&1; then
-            echo "  [ok]  $pkg"
+            echo "  [ok]  $pkg (instalado)"
+            _apk_ok=$((_apk_ok + 1))
         else
-            echo "  [!!]  no se pudo instalar $pkg — continuo"
+            echo "  [!!]  $pkg (no se pudo instalar, continuo)"
+            _apk_fail=$((_apk_fail + 1))
+            _apk_fallidos="${_apk_fallidos} ${pkg}"
         fi
     done
 }
@@ -107,6 +117,10 @@ instalar_apk \
     iproute2 iputils \
     ca-certificates \
     gcc musl-dev python3-dev libffi-dev openssl-dev linux-headers make
+
+echo ""
+echo "  Resumen apk -> ya instalados: ${_apk_ya} | nuevos: ${_apk_ok} | fallidos: ${_apk_fail}"
+[ -n "$_apk_fallidos" ] && echo "  Paquetes que fallaron:${_apk_fallidos}"
 
 # =====================================================================
 # 3. ENTORNO PYTHON + REQUIREMENTS
