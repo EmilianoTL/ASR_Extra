@@ -42,25 +42,31 @@ def crear_app():
 
     # --- Blueprints REST ---
     from routes.routers import routers_bp
+    from routes.alertas import alertas_bp
     app.register_blueprint(routers_bp, url_prefix='/routers')
+    app.register_blueprint(alertas_bp, url_prefix='/alertas')
 
     # TODO (Fase 3): registrar blueprints restantes conforme se implementen
     #   from routes.topologia import topologia_bp
     #   from routes.enrutamiento import enrutamiento_bp
     #   from routes.cambios import cambios_bp
-    #   from routes.alertas import alertas_bp
     #   app.register_blueprint(topologia_bp, url_prefix='/topologia')
     #   app.register_blueprint(enrutamiento_bp, url_prefix='/enrutamiento')
     #   app.register_blueprint(cambios_bp, url_prefix='/cambios')
-    #   app.register_blueprint(alertas_bp, url_prefix='/alertas')
-
-    # TODO (Fase 3/8): iniciar hilos de monitoreo en background
-    #   from network_utils.PySnmpTraps import asegurar_receptor_corriendo
-    #   from network_utils.ping_monitor import iniciar_monitor
-    #   asegurar_receptor_corriendo(app)
-    #   iniciar_monitor(app)
 
     return app
+
+
+def iniciar_monitoreo_background(app):
+    """Arranca los hilos daemon de monitoreo (traps SNMPv3, y luego ping).
+
+    Se llama al ejecutar el servidor real (no al importar la app en pruebas),
+    para no ligar el puerto de traps ni duplicar hilos.
+    """
+    from network_utils.PySnmpTraps import asegurar_receptor_corriendo
+    asegurar_receptor_corriendo(app)
+    # TODO (Fase 3f): from network_utils.ping_monitor import iniciar_monitor
+    #                 iniciar_monitor(app)
 
 
 def _registrar_rutas_base(app):
@@ -97,4 +103,8 @@ app = crear_app()
 if __name__ == '__main__':
     puerto = int(os.getenv('FLASK_PUERTO', 5000))
     modo_debug = os.getenv('FLASK_DEBUG', 'False') == 'True'
+    # Solo en el proceso principal (no en el hijo del reloader) para no
+    # duplicar el bind del puerto de traps.
+    if not modo_debug or os.getenv('WERKZEUG_RUN_MAIN') == 'true':
+        iniciar_monitoreo_background(app)
     app.run(host='0.0.0.0', port=puerto, debug=modo_debug)
