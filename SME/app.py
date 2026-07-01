@@ -40,13 +40,15 @@ def crear_app():
 
     _registrar_rutas_base(app)
 
-    # TODO (Fase 3): registrar blueprints REST
-    #   from routes.routers import routers_bp
+    # --- Blueprints REST ---
+    from routes.routers import routers_bp
+    app.register_blueprint(routers_bp, url_prefix='/routers')
+
+    # TODO (Fase 3): registrar blueprints restantes conforme se implementen
     #   from routes.topologia import topologia_bp
     #   from routes.enrutamiento import enrutamiento_bp
     #   from routes.cambios import cambios_bp
     #   from routes.alertas import alertas_bp
-    #   app.register_blueprint(routers_bp, url_prefix='/routers')
     #   app.register_blueprint(topologia_bp, url_prefix='/topologia')
     #   app.register_blueprint(enrutamiento_bp, url_prefix='/enrutamiento')
     #   app.register_blueprint(cambios_bp, url_prefix='/cambios')
