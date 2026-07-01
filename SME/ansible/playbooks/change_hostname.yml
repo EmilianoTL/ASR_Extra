@@ -1,0 +1,10 @@
+---
+- name: Cambiar el hostname de un router
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Aplicar nuevo hostname
+      cisco.ios.ios_config:
+        lines:
+          - "hostname {{ nuevo_hostname }}"
+        save_when: always

@@ -1,0 +1,10 @@
+---
+- name: Cambiar la ubicacion (snmp-server location) de un router
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Aplicar nueva location
+      cisco.ios.ios_config:
+        lines:
+          - "snmp-server location {{ nueva_location }}"
+        save_when: always

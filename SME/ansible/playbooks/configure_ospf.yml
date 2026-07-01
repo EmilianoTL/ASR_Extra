@@ -1,0 +1,11 @@
+---
+- name: Configurar OSPF (area 0) en todos los routers
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Habilitar OSPF proceso 1 anunciando todas las interfaces
+      cisco.ios.ios_config:
+        parents: router ospf 1
+        lines:
+          - network 0.0.0.0 255.255.255.255 area 0
+        save_when: always

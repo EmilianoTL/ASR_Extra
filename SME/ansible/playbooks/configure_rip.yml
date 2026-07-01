@@ -1,0 +1,14 @@
+---
+- name: Configurar RIP v2 en todos los routers
+  hosts: routers
+  gather_facts: false
+  tasks:
+    - name: Habilitar RIP v2 y anunciar las redes del laboratorio
+      cisco.ios.ios_config:
+        parents: router rip
+        lines:
+          - version 2
+          - network 8.0.0.0
+          - network 148.204.0.0
+          - no auto-summary
+        save_when: always

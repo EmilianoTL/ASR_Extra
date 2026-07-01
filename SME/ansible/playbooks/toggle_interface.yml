@@ -1,0 +1,11 @@
+---
+- name: Activar o desactivar una interfaz
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Aplicar estado (no shutdown / shutdown) a la interfaz
+      cisco.ios.ios_config:
+        parents: "interface {{ nombre_interfaz }}"
+        lines:
+          - "{{ 'no shutdown' if accion == 'up' else 'shutdown' }}"
+        save_when: always
