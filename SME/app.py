@@ -101,8 +101,11 @@ app = crear_app()
 if __name__ == '__main__':
     puerto = int(os.getenv('FLASK_PUERTO', 5000))
     modo_debug = os.getenv('FLASK_DEBUG', 'False') == 'True'
+    # SKIP_MONITOR=1 arranca solo la API (sin traps ni ping): útil para probar
+    # endpoints sin permisos de root ni el puerto UDP 162.
+    saltar_monitor = os.getenv('SKIP_MONITOR') == '1'
     # Solo en el proceso principal (no en el hijo del reloader) para no
     # duplicar el bind del puerto de traps.
-    if not modo_debug or os.getenv('WERKZEUG_RUN_MAIN') == 'true':
+    if not saltar_monitor and (not modo_debug or os.getenv('WERKZEUG_RUN_MAIN') == 'true'):
         iniciar_monitoreo_background(app)
     app.run(host='0.0.0.0', port=puerto, debug=modo_debug)
