@@ -46,12 +46,16 @@ sqlite3 database/red_asr.db "INSERT INTO interfaces (nombre_api, ip_address, mas
 
 ## 1b. Explorar la topología (Fase "Explorar la red")
 
-Ver el grafo actual (routers + enlaces + figura Plotly) desde la BD:
+Ver el grafo actual desde la BD. Formatos con `?formato=`:
 ```sh
-curl -s -w '\nHTTP %{http_code}\n' $BASE/topologia/
+curl -s -w '\nHTTP %{http_code}\n' $BASE/topologia/                 # JSON completo (def)
+curl -s -w '\nHTTP %{http_code}\n' "$BASE/topologia/?formato=resumen"  # router: con quién conecta
+curl -s "$BASE/topologia/?formato=svg" -o topologia.svg             # imagen estática SVG
+curl -s "$BASE/topologia/?formato=fragmento" -o topologia_frag.html # fragmento HTML (div Plotly)
+curl -s "$BASE/topologia/?formato=html" -o topologia.html           # página HTML completa
 ```
-⚠️ Lanzar el DESCUBRIMIENTO por CDP desde el router semilla (SSH a los routers,
-puebla la BD). Necesita SSH/credenciales y, para R2/R3, el enrutamiento activo:
+⚠️ Lanzar el DESCUBRIMIENTO por CDP (SSH a los routers, puebla la BD). Regresa un
+resumen simplista de qué router quedó conectado con quién:
 ```sh
 curl -s -X POST -w '\nHTTP %{http_code}\n' $BASE/topologia/
 ```

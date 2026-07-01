@@ -16,10 +16,13 @@ import socket
 import struct
 from collections import deque
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, Response
 
 from database.models import db, Router, Interface
-from viz.grafo_topologia import construir_figura, construir_enlaces
+from viz.grafo_topologia import (
+    construir_figura, construir_enlaces, construir_resumen,
+    construir_html, construir_svg,
+)
 
 topologia_bp = Blueprint('topologia', __name__)
 
@@ -227,7 +230,19 @@ def sincronizar_db(red: dict) -> None:
 
 @topologia_bp.route('/', methods=['GET'])
 def obtener_topologia():
+    """Grafo actual. ?formato=json (def) | html | fragmento | svg | resumen."""
+    formato = (request.args.get('formato') or 'json').lower()
     routers = Router.query.all()
+
+    if formato == 'html':
+        return Response(construir_html(routers), mimetype='text/html')
+    if formato in ('fragmento', 'fragment'):
+        return Response(construir_html(routers, fragmento=True), mimetype='text/html')
+    if formato == 'svg':
+        return Response(construir_svg(routers), mimetype='image/svg+xml')
+    if formato == 'resumen':
+        return jsonify(construir_resumen(routers)), 200
+
     return jsonify({
         'routers': [r.to_dict(incluir_interfaces=True) for r in routers],
         'enlaces': construir_enlaces(routers),
@@ -245,9 +260,23 @@ def lanzar_descubrimiento():
             'pista': 'Verifica SSH/credenciales y que el enrutamiento esté activo',
         }), 502
     sincronizar_db(red)
+
+    # Resumen simplista: cada router y con quién quedó conectado.
+    conexiones = {
+        host: sorted({v['vecino'] for v in info['vecinos_cdp']})
+        for host, info in red.items()
+    }
+    enlaces, vistos = [], set()
+    for host, vecinos in conexiones.items():
+        for vecino in vecinos:
+            par = tuple(sorted((host, vecino)))
+            if par not in vistos:
+                vistos.add(par)
+                enlaces.append(f"{par[0]} <-> {par[1]}")
+
     return jsonify({
-        'mensaje': 'Descubrimiento completado',
-        'seed': SEED_ROUTER_IP,
+        'mensaje': 'Topología actualizada',
         'total': len(red),
-        'routers': sorted(red.keys()),
+        'conexiones': conexiones,
+        'enlaces': sorted(enlaces),
     }), 200
