@@ -43,6 +43,28 @@ sqlite3 database/red_asr.db "INSERT INTO routers (hostname, ip_admin) VALUES ('R
 sqlite3 database/red_asr.db "INSERT INTO interfaces (nombre_api, ip_address, mascara, estado, router_id) VALUES ('f0_0','148.204.56.1','255.255.255.0','up',1);"
 ```
 
+
+## 1b. Explorar la topología (Fase "Explorar la red")
+
+Ver el grafo actual (routers + enlaces + figura Plotly) desde la BD:
+```sh
+curl -s -w '\nHTTP %{http_code}\n' $BASE/topologia/
+```
+⚠️ Lanzar el DESCUBRIMIENTO por CDP desde el router semilla (SSH a los routers,
+puebla la BD). Necesita SSH/credenciales y, para R2/R3, el enrutamiento activo:
+```sh
+curl -s -X POST -w '\nHTTP %{http_code}\n' $BASE/topologia/
+```
+
+> El descubrimiento es lo que PUEBLA la BD. Si `/enrutamiento/` o `/routers/`
+> salen vacíos, corre primero el POST de topología (o siembra con sqlite3).
+
+## 1c. Documentación automática de la API
+```sh
+curl -s $BASE/docs/rutas            # lista de endpoints en JSON
+```
+Y en el navegador: `http://<IP-SME>:5000/docs` (tabla HTML de todos los endpoints).
+
 ## 2. Routers
 
 ```sh

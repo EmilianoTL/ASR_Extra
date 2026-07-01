@@ -46,11 +46,13 @@ def crear_app():
     from routes.enrutamiento import enrutamiento_bp
     from routes.cambios import cambios_bp
     from routes.topologia import topologia_bp
+    from routes.docs import docs_bp
     app.register_blueprint(routers_bp, url_prefix='/routers')
     app.register_blueprint(alertas_bp, url_prefix='/alertas')
     app.register_blueprint(enrutamiento_bp, url_prefix='/enrutamiento')
     app.register_blueprint(cambios_bp, url_prefix='/cambios')
     app.register_blueprint(topologia_bp, url_prefix='/topologia')
+    app.register_blueprint(docs_bp)   # /docs (documentación automática)
 
     return app
 
